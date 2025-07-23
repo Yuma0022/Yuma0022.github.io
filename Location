@@ -190,7 +190,7 @@
             container.innerHTML = '';
             
             if (trackingLinks.length === 0) {
-                container.innerHTML = '<p class="text-gray-500 col-span-full text-center py-8">No tracking links created yet</p>';
+                container.innerHTML = '<p class="text-gray-500 col-span-full text-center py-8">Projeck Yuma, Terimakasih</p>';
                 document.getElementById('dataSection').classList.add('hidden');
                 return;
             }
