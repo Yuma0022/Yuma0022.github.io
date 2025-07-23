@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Link Tracker</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js"></script>
+    <style>
+        .gradient-bg {
+            background: linear-gradient(135deg, #6b46c1 0%, #4299e1 100%);
+        }
+        .tracking-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        }
+        .qr-code {
+            transition: all 0.3s ease;
+        }
+        .qr-code:hover {
+            transform: scale(1.1);
+        }
+    </style>
+</head>
+<body class="min-h-screen bg-gray-50">
+    <header class="gradient-bg text-white">
+        <div class="container mx-auto px-4 py-12">
+            <div class="flex flex-col md:flex-row justify-between items-center">
+                <div class="mb-8 md:mb-0">
+                    <h1 class="text-4xl font-bold mb-2">Projeck Yuma</h1>
+                    <p class="text-xl opacity-90 hidden md:block">Note: Website ini masih dalam pengembangan jika terjadinya kesalahan silahkan hubungin kontak yang di bawah</p>
+                    <p class="text-sm opacity-80 mt-2">Note: Website ini masih dalam pengembangan jika terjadinya kesalahan silahkan hubungin kontak yang di bawa</p>
+                </div>
+                <img src="https://storage.googleapis.com/workspace-0f70711f-8b4e-4d94-86f1-2a93ccde5887/image/cae1cdef-5b80-49a1-b985-7058e50020af.png" alt="Illustration of a digital analytics dashboard showing geographic data visualizations" class="rounded-lg shadow-lg border-2 border-white" />
+            </div>
+        </div>
+    </header>
+
+    <main class="container mx-auto px-4 py-8 -mt-10">
+        <section class="bg-white rounded-xl shadow-md p-6 mb-8 relative">
+            <h2 class="text-2xl font-bold mb-4">Masukan link</h2>
+            <div class="flex flex-col md:flex-row gap-4">
+                <input type="url" id="targetUrl" placeholder="Enter URL to track (e.g., https://yuma.com)" class="flex-grow px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-purple-500" required>
+                <button id="createBtn" class="bg-purple-600 hover:bg-purple-700 text-white px-6 py-3 rounded-lg font-medium transition-colors">Lanjutkam</button>
+            </div>
+        </section>
+
+        <section id="trackingLinks" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <!-- Tracking links will be inserted here -->
+        </section>
+
+        <section id="dataSection" class="mt-12 hidden">
+            <h2 class="text-2xl font-bold mb-6">Tracking Data Visualization</h2>
+            <div class="bg-white rounded-xl shadow-md p-6">
+                <div class="flex flex-col md:flex-row gap-8">
+                    <div id="mapContainer" class="md:w-2/3">
+                        <h3 class="text-xl font-bold mb-4">Location Data</h3>
+                        <div class="bg-gray-100 rounded-lg p-4 h-64 flex items-center justify-center">
+                            <p id="noDataText">No tracking data available yet</p>
+                            <img src="https://storage.googleapis.com/workspace-0f70711f-8b4e-4d94-86f1-2a93ccde5887/image/b1cdc92b-ce74-4352-b5c2-fda87da596b4.png" alt="World map with location markers showing where links were opened" id="mapImage" class="hidden w-full h-full object-contain" />
+                        </div>
+                    </div>
+                    <div class="md:w-1/3">
+                        <h3 class="text-xl font-bold mb-4">Stats Overview</h3>
+                        <div class="space-y-4">
+                            <div class="bg-gray-50 p-4 rounded-lg">
+                                <p class="text-sm text-gray-500">TOTAL CLICKS</p>
+                                <p id="totalClicks" class="text-3xl font-bold">0</p>
+                            </div>
+                            <div class="bg-gray-50 p-4 rounded-lg">
+                                <p class="text-sm text-gray-500">UNIQUE LOCATIONS</p>
+                                <p id="uniqueLocations" class="text-3xl font-bold">0</p>
+                            </div>
+                            <div class="bg-gray-50 p-4 rounded-lg">
+                                <p class="text-sm text-gray-500">LAST OPENED</p>
+                                <p id="lastOpened" class="text-xl">Never</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="mt-8">
+                    <h3 class="text-xl font-bold mb-4">Click History</h3>
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full bg-white" id="historyTable">
+                            <thead>
+                                <tr class="bg-gray-100 text-left text-sm font-semibold text-gray-700">
+                                    <th class="px-6 py-3">Time</th>
+                                    <th class="px-6 py-3">Location</th>
+                                    <th class="px-6 py-3">Device</th>
+                                    <th class="px-6 py-3">Browser</th>
+                                </tr>
+                            </thead>
+                            <tbody id="historyBody">
+                                <!-- Click history will be inserted here -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <script>
+        // Store tracking data in local storage
+        const storageKey = 'linkTrackerData';
+        let trackingLinks = JSON.parse(localStorage.getItem(storageKey)) || [];
+
+        document.addEventListener('DOMContentLoaded', () => {
+            renderTrackingLinks();
+            setupEventListeners();
+        });
+
+        function setupEventListeners() {
+            document.getElementById('createBtn').addEventListener('click', createTrackingLink);
+            
+            // Check if URL contains tracking ID (simulating when someone opens a tracking link)
+            const urlParams = new URLSearchParams(window.location.search);
+            const trackId = urlParams.get('trackId');
+            if (trackId) {
+                const decodedId = atob(trackId);
+                const trackingLink = trackingLinks.find(link => link.id === decodedId);
+                if (trackingLink) {
+                    // Simulate tracking
+                    recordClick(trackingLink);
+                    // Redirect to original URL after a slight delay (to ensure tracking is recorded)
+                    setTimeout(() => {
+                        window.location.href = trackingLink.targetUrl;
+                    }, 500);
+                }
+            }
+        }
+
+        function createTrackingLink() {
+            const targetUrl = document.getElementById('targetUrl').value.trim();
+            if (!targetUrl) return;
+            
+            // Basic validation
+            if (!targetUrl.startsWith('http://') && !targetUrl.startsWith('https://')) {
+                alert('Please enter a valid URL starting with http:// or https://');
+                return;
+            }
+            
+            const newLink = {
+                id: generateId(),
+                targetUrl,
+                createdAt: new Date().toISOString(),
+                clicks: [],
+                shortId: Math.random().toString(36).substr(2, 8)
+            };
+            
+            trackingLinks.unshift(newLink);
+            saveToStorage();
+            renderTrackingLinks();
+            document.getElementById('targetUrl').value = '';
+            
+            // Show data visualization if there are tracking links
+            if (trackingLinks.length > 0) {
+                document.getElementById('dataSection').classList.remove('hidden');
+            }
+            
+            // Show notification
+            showNotification('Tracking link created successfully!', 'success');
+        }
+
+        function recordClick(trackingLink) {
+            // Simulate getting geolocation and device info
+            const now = new Date();
+            const clickData = {
+                timestamp: now.toISOString(),
+                readableTime: now.toLocaleString(),
+                location: getRandomLocation(),
+                device: getRandomDevice(),
+                browser: getRandomBrowser(),
+                ip: generateRandomIp()
+            };
+            
+            trackingLink.clicks.push(clickData);
+            saveToStorage();
+            
+            // Update UI to show new click
+            renderTrackingLinks();
+        }
+
+        function saveToStorage() {
+            localStorage.setItem(storageKey, JSON.stringify(trackingLinks));
+        }
+
+        function renderTrackingLinks() {
+            const container = document.getElementById('trackingLinks');
+            container.innerHTML = '';
+            
+            if (trackingLinks.length === 0) {
+                container.innerHTML = '<p class="text-gray-500 col-span-full text-center py-8">No tracking links created yet</p>';
+                document.getElementById('dataSection').classList.add('hidden');
+                return;
+            }
+            
+            trackingLinks.forEach(link => {
+                const card = document.createElement('div');
+                card.className = 'bg-white rounded-xl shadow-md p-6 tracking-card transition-transform duration-300';
+                
+                const trackingUrl = `${window.location.origin}${window.location.pathname}?trackId=${btoa(link.id)}`;
+                const isSecure = trackingUrl.startsWith('https://');
+                
+                card.innerHTML = `
+                    <div class="flex justify-between items-start mb-4">
+                        <div>
+                            <h3 class="font-bold truncate">${link.targetUrl}</h3>
+                            <p class="text-sm text-gray-500">Created: ${new Date(link.createdAt).toLocaleString()}</p>
+                        </div>
+                        <span class="px-3 py-1 rounded-full text-xs font-medium ${isSecure ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}">
+                            ${isSecure ? 'Secure' : 'Insecure'}
+                        </span>
+                    </div>
+                    
+                    <div class="flex flex-col md:flex-row gap-4">
+                        <input type="text" value="${trackingUrl}" id="url-${link.id}" class="flex-grow px-3 py-2 rounded-lg border border-gray-300 text-sm truncate text-gray-700 bg-gray-50" readonly>
+                        <button onclick="copyToClipboard('url-${link.id}')" class="bg-gray-200 hover:bg-gray-300 text-gray-800 px-3 py-2 rounded-lg text-sm transition-colors">Copy</button>
+                    </div>
+                    
+                    <div class="mt-4 flex flex-col md:flex-row justify-between items-center gap-4">
+                        <div class="text-center">
+                            <p class="text-sm text-gray-500">Total Clicks</p>
+                            <p class="text-xl font-bold">${link.clicks.length}</p>
+                        </div>
+                        
+                        <div id="qr-${link.id}" class="qr-code bg-white p-2 rounded border border-gray-200 cursor-pointer" onclick="showQrModal('${trackingUrl}')"></div>
+                        
+                        <button onclick="showLinkDetails('${link.id}')" 
+                                class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm transition-colors">
+                            View Details
+                        </button>
+                    </div>
+                `;
+                
+                container.appendChild(card);
+                
+                // Generate QR code
+                QRCode.toCanvas(document.getElementById(`qr-${link.id}`), trackingUrl, {
+                    width: 80,
+                    margin: 1,
+                    color: {
+                        dark: '#000000',
+                        light: '#ffffff',
+                    }
+                });
+            });
+            
+            // Update the visualization
+            updateDataVisualization();
+        }
+
+        function updateDataVisualization() {
+            if (trackingLinks.length === 0) return;
+            
+            // For demo, we'll use the first tracking link's data
+            const activeLink = trackingLinks[0];
+            const clicks = activeLink.clicks;
+            
+            document.getElementById('totalClicks').textContent = clicks.length;
+            document.getElementById('uniqueLocations').textContent = new Set(clicks.map(c => c.location.city)).size;
+            document.getElementById('lastOpened').textContent = clicks.length > 0 ? clicks[clicks.length - 1].readableTime : 'Never';
+            
+            // Update the map image (simulated)
+            if (clicks.length > 0) {
+                document.getElementById('noDataText').classList.add('hidden');
+                document.getElementById('mapImage').classList.remove('hidden');
+            }
+            
+            // Update click history table
+            const historyBody = document.getElementById('historyBody');
+            historyBody.innerHTML = '';
+            
+            activeLink.clicks.forEach(click => {
+                const row = document.createElement('tr');
+                row.className = 'border-b border-gray-200';
+                row.innerHTML = `
+                    <td class="px-6 py-4 whitespace-nowrap">${click.readableTime}</td>
+                    <td class="px-6 py-4 whitespace-nowrap">${click.location.city}, ${click.location.country}</td>
+                    <td class="px-6 py-4 whitespace-nowrap">${click.device}</td>
+                    <td class="px-6 py-4 whitespace-nowrap">${click.browser}</td>
+                `;
+                historyBody.appendChild(row);
+            });
+        }
+
+        function showLinkDetails(linkId) {
+            const link = trackingLinks.find(l => l.id === linkId);
+            if (!link) return;
+            
+            // For this demo, we'll just log the details to console
+            console.log('Link Details:', link);
+            alert(`Viewing details for tracking link. In a full implementation, this would show analytics for just this link.
+
+URL: ${link.targetUrl}
+Clicks: ${link.clicks.length}
+Last Click: ${link.clicks.length > 0 ? link.clicks[link.clicks.length-1].readableTime : 'Never'}`);
+        }
+
+        function copyToClipboard(elementId) {
+            const copyText = document.getElementById(elementId);
+            copyText.select();
+            copyText.setSelectionRange(0, 99999);
+            document.execCommand('copy');
+            
+            showNotification('Link copied to clipboard!', 'success');
+        }
+
+        function showQrModal(url) {
+            const modal = document.createElement('div');
+            modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4';
+            modal.innerHTML = `
+                <div class="bg-white rounded-xl shadow-xl p-6 max-w-sm w-full">
+                    <h3 class="text-xl font-bold mb-4">QR Code</h3>
+                    <div class="flex justify-center mb-6">
+                        <canvas id="modalQr" class="border border-gray-200"></canvas>
+                    </div>
+                    <p class="text-sm text-gray-500 mb-4">Scan this QR code to share your tracking link</p>
+                    <button onclick="this.closest('div[style*=\\'fixed\\']').remove()" 
+                            class="w-full bg-purple-600 hover:bg-purple-700 text-white py-2 rounded-lg transition-colors">
+                        Close
+                    </button>
+                </div>
+            `;
+            
+            document.body.appendChild(modal);
+            QRCode.toCanvas(document.getElementById('modalQr'), url, {
+                width: 200,
+                margin: 2,
+                color: {
+                    dark: '#000000',
+                    light: '#ffffff',
+                }
+            });
+        }
+
+        function showNotification(message, type = 'success') {
+            const notification = document.createElement('div');
+            notification.className = `fixed bottom-4 right-4 px-6 py-3 rounded-lg shadow-lg text-white ${
+                type === 'success' ? 'bg-green-500' : 'bg-red-500'
+            } transform translate-y-10 opacity-0 transition-all duration-300`;
+            notification.textContent = message;
+            document.body.appendChild(notification);
+            
+            // Trigger animation
+            setTimeout(() => {
+                notification.classList.remove('translate-y-10', 'opacity-0');
+                notification.classList.add('opacity-100');
+            }, 10);
+            
+            // Remove after delay
+            setTimeout(() => {
+                notification.classList.remove('opacity-100');
+                notification.classList.add('opacity-0', 'translate-y-10');
+                setTimeout(() => notification.remove(), 300);
+            }, 3000);
+        }
+
+        // Helper functions for demo data
+        function generateId() {
+            return Date.now().toString(36) + Math.random().toString(36).substr(2);
+        }
+
+        function getRandomLocation() {
+            const cities = [
+                { city: 'New York', country: 'USA', lat: 40.7128, lng: -74.0060 },
+                { city: 'London', country: 'UK', lat: 51.5074, lng: -0.1278 },
+                { city: 'Tokyo', country: 'Japan', lat: 35.6762, lng: 139.6503 },
+                { city: 'Sydney', country: 'Australia', lat: -33.8688, lng: 151.2093 },
+                { city: 'Berlin', country: 'Germany', lat: 52.5200, lng: 13.4050 },
+                { city: 'Toronto', country: 'Canada', lat: 43.6532, lng: -79.3832 },
+                { city: 'Singapore', country: 'Singapore', lat: 1.3521, lng: 103.8198 }
+            ];
+            return cities[Math.floor(Math.random() * cities.length)];
+        }
+
+        function getRandomDevice() {
+            const devices = ['Desktop', 'Mobile', 'Tablet'];
+            const brands = ['Apple', 'Samsung', 'Google', 'Microsoft', 'Dell', 'Lenovo'];
+            return `${brands[Math.floor(Math.random() * brands.length)]} ${devices[Math.floor(Math.random() * devices.length)]}`;
+        }
+
+        function getRandomBrowser() {
+            const browsers = ['Chrome', 'Firefox', 'Safari', 'Edge', 'Opera', 'Brave'];
+            return `${browsers[Math.floor(Math.random() * browsers.length)]}`;
+        }
+
+        function generateRandomIp() {
+            return Array(4).fill(0).map(() => Math.floor(Math.random() * 255)).join('.');
+        }
+    </script>
+</body>
+</html>
+
